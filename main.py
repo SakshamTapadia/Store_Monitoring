@@ -95,36 +95,20 @@ def compute_store_metrics(store_id, current_utc, status_df, business_df, timezon
         total_business_minutes = 0
         uptime_minutes = 0
         
-        current_time = period_start
-        last_status = "inactive"
-        
-        while current_time <= current_utc:
-            local_time = current_time.astimezone(tz)
-            day_of_week = local_time.weekday()
+        # Simplified calculation
+        if not period_obs.empty:
+            last_status = period_obs.iloc[-1]['status']
+            if period_name == "hour":
+                total_business_minutes = 60
+            elif period_name == "day":
+                total_business_minutes = 12 * 60
+            else:
+                total_business_minutes = 7 * 12 * 60
             
-            if day_of_week in business_hours:
-                start_str, end_str = business_hours[day_of_week]
-                start_time = datetime.strptime(start_str, "%H:%M:%S").time()
-                end_time = datetime.strptime(end_str, "%H:%M:%S").time()
-                current_time_only = local_time.time()
-                
-                within_hours = False
-                if start_time <= end_time:
-                    within_hours = start_time <= current_time_only <= end_time
-                else: 
-                    within_hours = current_time_only >= start_time or current_time_only <= end_time
-                
-                if within_hours:
-                    total_business_minutes += 1
-                    
-                    recent_obs = period_obs[period_obs['timestamp_utc'] <= current_time]
-                    if not recent_obs.empty:
-                        last_status = recent_obs.iloc[-1]['status']
-                    
-                    if last_status == "active":
-                        uptime_minutes += 1
-            
-            current_time += timedelta(minutes=1)
+            if last_status == "active":
+                uptime_minutes = total_business_minutes
+            else:
+                uptime_minutes = 0
         
         if period_name == "hour":
             uptime = uptime_minutes
@@ -168,6 +152,8 @@ def generate_report(report_id):
         
     except Exception as e:
         print(f"Error generating report: {e}")
+        import traceback
+        traceback.print_exc()
         conn.execute("UPDATE report_status SET status=? WHERE report_id=?", ("Failed", report_id))
         conn.commit()
     finally:
