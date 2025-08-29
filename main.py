@@ -138,6 +138,7 @@ def compute_store_metrics(store_id, current_utc, status_df, business_df, timezon
     return metrics
 
 def generate_report(report_id):
+    print(f"Starting report generation for {report_id}")
     try:
         conn = sqlite3.connect(DB_FILE)
         
@@ -158,10 +159,12 @@ def generate_report(report_id):
             "downtime_last_hour", "downtime_last_day", "downtime_last_week"
         ])
         df.to_csv(csv_path, index=False)
+        print(f"Report saved to {csv_path}")
         
         conn.execute("UPDATE report_status SET status=?, csv_path=? WHERE report_id=?",
                      ("Complete", csv_path, report_id))
         conn.commit()
+        print(f"Report {report_id} completed")
         
     except Exception as e:
         print(f"Error generating report: {e}")
